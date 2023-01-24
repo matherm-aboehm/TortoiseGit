@@ -50,6 +50,7 @@ using std::min;
 
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <list>
 
@@ -76,6 +77,8 @@ using std::min;
 #include "scope_exit_noexcept.h"
 #include "ProfilingInfo.h"
 #include "CrashReport.h"
+
+using AutoLocker = CComCritSecLock<CComAutoCriticalSection>;
 
 #ifdef _WIN64
 #	define APP_X64_STRING	"x64"

@@ -109,43 +109,110 @@ CString CPathUtils::GetFileExtFromPath(const CString& sPath)
 	return CString();
 }
 
+static CComAutoCriticalSection		s_critLongPathnameSec;
+
+namespace std {
+#if !_HAS_CXX17
+	template <>
+	struct hash<CString>
+	{   // hash functor for CString
+		_CXX17_DEPRECATE_ADAPTOR_TYPEDEFS typedef CString argument_type;
+		_CXX17_DEPRECATE_ADAPTOR_TYPEDEFS typedef size_t result_type;
+		_NODISCARD size_t operator()(const CString& _Keyval) const
+		{   // hash _Keyval to size_t value by pseudorandomizing transform
+#ifdef _HAS_CXX17
+			return (_Hash_array_representation((LPCTSTR)_Keyval, _Keyval.GetLength()));
+#else
+			return (_Hash_seq((const unsigned char*)(LPCTSTR)_Keyval,
+				_Keyval.GetLength() * sizeof(TCHAR)));
+#endif
+		}
+	};
+#else
+	template<typename BaseType, class StringTraits>
+	struct hash<CStringT<BaseType, StringTraits>>
+	{   // hash functor for CString
+		_CXX17_DEPRECATE_ADAPTOR_TYPEDEFS typedef CStringT<BaseType, StringTraits> argument_type;
+		_CXX17_DEPRECATE_ADAPTOR_TYPEDEFS typedef size_t result_type;
+		_NODISCARD size_t operator()(const CStringT<BaseType, StringTraits>& _Keyval) const noexcept
+		{   // hash _Keyval to size_t value by pseudorandomizing transform
+			return hash<basic_string_view<BaseType>>()(
+				basic_string_view<BaseType>(
+					_Keyval.GetString(),
+					_Keyval.GetLength()));
+		}
+	};
+#endif
+}
+// Cache the long path names, because some virus scanners (e.g. Trend Micro Apex One)
+// has serious performance problems with ::GetLongPathName
+static std::unordered_map<CString, CString>	s_cacheLongPathnames;
+
 CString CPathUtils::GetLongPathname(const CString& path)
 {
-	if (path.IsEmpty())
-		return path;
-	wchar_t pathbufcanonicalized[MAX_PATH] = { 0 }; // MAX_PATH ok.
-	DWORD ret = 0;
-	CString sRet;
-	if (!PathIsURL(path) && PathIsRelative(path))
+	CString sRet(path);
+	if (!path.IsEmpty())
 	{
-		ret = GetFullPathName(path, 0, nullptr, nullptr);
-		if (ret)
+		wchar_t pathbufcanonicalized[MAX_PATH] = { 0 }; // MAX_PATH ok.
+		wchar_t longpathbuf[MAX_PATH] = { 0 };
+		DWORD ret = 0;
+		bool foundInCache = false;
 		{
-			auto pathbuf = std::make_unique<wchar_t[]>(ret + 1);
-			if ((ret = GetFullPathName(path, ret, pathbuf.get(), nullptr)) != 0)
-				sRet = CString(pathbuf.get(), ret);
+			AutoLocker lock(s_critLongPathnameSec);
+			auto lookup = s_cacheLongPathnames.find(path);
+			if (lookup != s_cacheLongPathnames.cend())
+			{
+				sRet = lookup->second;
+				foundInCache = true;
+			}
+		}
+		if (!foundInCache)
+		{
+			if (!PathIsURL(path) && PathIsRelative(path))
+			{
+				ret = GetFullPathName(path, MAX_PATH, longpathbuf, nullptr);
+				if (ret != 0)
+				{
+					if (ret < MAX_PATH)
+						sRet = CString(longpathbuf, ret);
+					else
+					{
+						auto pathbuf = std::make_unique<wchar_t[]>(ret + 1);
+						if ((ret = GetFullPathName(path, ret, pathbuf.get(), nullptr)) != 0)
+							sRet = CString(pathbuf.get(), ret);
+					}
+				}
+			}
+			else
+			{
+				bool iscanonical = PathCanonicalize(pathbufcanonicalized, path);
+				// Assume MAX_PATH for lpszLongPath on first call,
+				// because most of the time input is already in long path name form and
+				// API restricts this to MAX_PATH without special parameters,
+				// so the fs/os checks will be done only once.
+				// Profiling showed that calling it 2 times, also takes 2 times of CPU usage,
+				// so it's not cached by the os.
+				// If it doesn't fit into the stack buffer then normal buffer allocation mechanism will be done as before.
+				ret = ::GetLongPathName(iscanonical ? pathbufcanonicalized : path, longpathbuf, MAX_PATH);
+				if (ret != 0)
+				{
+					if (ret < MAX_PATH)
+						sRet = CString(longpathbuf, ret);
+					else
+					{
+						auto pathbuf = std::make_unique<wchar_t[]>(ret + 2);
+						if ((ret = ::GetLongPathName(iscanonical ? pathbufcanonicalized : path, pathbuf.get(), ret + 1)) != 0)
+							sRet = CString(pathbuf.get(), ret);
+					}
+				}
+			}
+			if (ret != 0)
+			{
+				AutoLocker lock(s_critLongPathnameSec);
+				s_cacheLongPathnames[path] = sRet;
+			}
 		}
 	}
-	else if (PathCanonicalize(pathbufcanonicalized, path))
-	{
-		ret = ::GetLongPathName(pathbufcanonicalized, nullptr, 0);
-		if (ret == 0)
-			return path;
-		auto pathbuf = std::make_unique<wchar_t[]>(ret + 2);
-		ret = ::GetLongPathName(pathbufcanonicalized, pathbuf.get(), ret + 1);
-		sRet = CString(pathbuf.get(), ret);
-	}
-	else
-	{
-		ret = ::GetLongPathName(path, nullptr, 0);
-		if (ret == 0)
-			return path;
-		auto pathbuf = std::make_unique<wchar_t[]>(ret + 2);
-		ret = ::GetLongPathName(path, pathbuf.get(), ret + 1);
-		sRet = CString(pathbuf.get(), ret);
-	}
-	if (ret == 0)
-		return path;
 	return sRet;
 }
 

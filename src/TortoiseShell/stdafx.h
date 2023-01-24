@@ -45,3 +45,4 @@ using std::min;
 #include "SysInfo.h"
 #include "DebugOutput.h"
 
+using AutoLocker = CComCritSecLock<CComCriticalSection>;

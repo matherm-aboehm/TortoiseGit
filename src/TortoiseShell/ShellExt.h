@@ -55,7 +55,6 @@ extern LPCWSTR				g_MenuIDString;
 
 extern	void				LoadLangDll();
 extern  CComCriticalSection	g_csGlobalCOMGuard;
-using AutoLocker = CComCritSecLock<CComCriticalSection>;
 
 // The actual OLE Shell context menu handler
 /**

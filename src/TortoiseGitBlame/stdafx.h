@@ -52,6 +52,8 @@ using std::min;
 #include "scope_exit_noexcept.h"
 #include "DebugOutput.h"
 
+using AutoLocker = CComCritSecLock<CComAutoCriticalSection>;
+
 #include <string>
 #include <vector>
 #include <map>

@@ -23,8 +23,6 @@
 #define READ_DIR_CHANGE_BUFFER_SIZE 4096
 #define MAX_CHANGED_PATHS  4000
 
-using AutoLocker = CComCritSecLock<CComCriticalSection>;
-
 /**
  * \ingroup Utils
  * Watches the file system for changes.

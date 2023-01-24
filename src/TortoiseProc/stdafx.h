@@ -71,6 +71,8 @@ using std::min;
 #include "DebugOutput.h"
 #include <afxdhtml.h>
 
+using AutoLocker = CComCritSecLock<CComAutoCriticalSection>;
+
 #ifdef _WIN64
 #	define APP_X64_STRING	"x64"
 #else

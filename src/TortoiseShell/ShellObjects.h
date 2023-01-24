@@ -21,8 +21,6 @@
 #include "ShellExt.h"
 #include <set>
 
-using AutoLocker = CComCritSecLock<CComCriticalSection>;
-
 class ShellObjects
 {
 public:

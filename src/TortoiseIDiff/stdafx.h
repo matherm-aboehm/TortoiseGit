@@ -37,11 +37,15 @@ using std::min;
 #include "MyMemDC.h"
 
 #include <atlbase.h>
+#include <map>
+#include <unordered_map>
 
 #include "git2.h"
 #include "SmartLibgit2Ref.h"
 
 #include "scope_exit_noexcept.h"
+
+using AutoLocker = CComCritSecLock<CComAutoCriticalSection>;
 
 #ifdef _WIN64
 #   define APP_X64_STRING   "x64"

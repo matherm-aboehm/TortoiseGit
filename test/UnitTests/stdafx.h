@@ -47,6 +47,8 @@ using std::max;
 #include "scope_exit_noexcept.h"
 #include "DebugOutput.h"
 
+using AutoLocker = CComCritSecLock<CComAutoCriticalSection>;
+
 #include "SmartHandle.h"
 
 // Header for gtest
