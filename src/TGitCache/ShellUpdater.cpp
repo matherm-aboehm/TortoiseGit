@@ -145,7 +145,7 @@ void CShellUpdater::WorkerThread()
 				if(::PathFileExists(admindir))
 					SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH | SHCNF_FLUSHNOWAIT, static_cast<LPCWSTR>(admindir), nullptr);
 
-				SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH | SHCNF_FLUSHNOWAIT, workingPath.GetWinPath(), nullptr);
+				SHChangeNotify(SHCNE_UPDATEITEM | SHCNE_UPDATEDIR, SHCNF_PATH | SHCNF_FLUSH, workingPath.GetWinPath(), nullptr);
 				// Sending an UPDATEDIR notification somehow overwrites/deletes the UPDATEITEM message. And without
 				// that message, the folder overlays in the current view don't get updated without hitting F5.
 				// Drawback is, without UPDATEDIR, the left tree view isn't always updated...
@@ -153,7 +153,7 @@ void CShellUpdater::WorkerThread()
 				//SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATH | SHCNF_FLUSHNOWAIT, workingPath.GetWinPath(), nullptr);
 			}
 			else
-				SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH | SHCNF_FLUSHNOWAIT, workingPath.GetWinPath(), nullptr);
+				SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH | SHCNF_FLUSH, workingPath.GetWinPath(), nullptr);
 		}
 	}
 	_endthread();
